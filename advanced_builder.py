@@ -132,6 +132,11 @@ class AsyncBuildProcess(object):
             else:
                 proc_env[k] = os.path.expandvars(proc_env[k]).encode(sys.getfilesystemencoding())
 
+        if shell_cmd:
+            printcons("Executing %s" % shell_cmd)
+        else:
+            printcons("Executing %s" % " ".join(cmd))
+
         if shell_cmd and sys.platform == "win32":
             # Use shell=True on Windows, so shell_cmd is passed through with the correct escaping
             self.proc = subprocess.Popen(shell_cmd, stdout=subprocess.PIPE,
@@ -206,6 +211,9 @@ class AsyncBuildProcess(object):
             else:
                 self.proc.stderr.close()
                 break
+
+    def write_stdin(self, data):
+        os.write(self.proc.stderr.fileno(), data)
 
 class OutputWindowController(ProcessListener):
     def init(self, command, task, encoding = "utf-8", quiet = False, jump_to_error = True, syntax = "Packages/Advanced Build System/AdvancedBuilderConsole.tmLanguage"):
@@ -489,6 +497,10 @@ class OutputWindowController(ProcessListener):
         self._running = False
 
     def done(self):
+        show_panel_on_build = sublime.load_settings("Preferences.sublime-settings").get("show_panel_on_build", True)
+        if show_panel_on_build:
+            self.window.run_command("show_panel", {"panel": "output.advanced_builder"})
+
         if int(sublime.version()) < 3000:
             edit = self.output_view.begin_edit()
             self.output_view.sel().clear()
